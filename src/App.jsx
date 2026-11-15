@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import AccessibilityWidget from './components/AccessibilityWidget';
 
 const LANGUAGES = [
   { code: 'amharic', label: 'አማርኛ', english: 'Amharic', tag: 'ET-AM' },
@@ -18,21 +19,12 @@ const ACCESSIBILITY_OPTIONS = [
   { key: 'keyboard', title: 'Keyboard & Switch', icon: 'keyboard_tab', detail: 'Sequential logical tabbing, bypass skiplinks, and hardware binding.', active: true },
 ];
 
-const INTEREST_TAGS = [
-  'Bouldering & Climbing',
-  'Analog Photography',
-  'Sourdough & Fermentation',
-  'Urban Cycling',
-  'Chess & Strategy',
-  'Botanical Care',
-];
+
 
 const HEADER_TITLES = [
   'Language Selection',
-  'Accessibility Mode',
-  'Basic Account Information',
+  'Account & Personal Information',
   'Special Status & Support',
-  'Personal Information',
   'Education & Skills',
   'Work Experience',
   'Documents & Portfolio',
@@ -64,6 +56,7 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('disability');
+  const [disabilityType, setDisabilityType] = useState('');
   const [useCaseNotes, setUseCaseNotes] = useState('');
   const [personal, setPersonal] = useState({
     firstName: '',
@@ -77,7 +70,12 @@ function App() {
     leisureActivity: '',
     bio: '',
   });
-  const [selectedTags, setSelectedTags] = useState(['Bouldering & Climbing', 'Sourdough & Fermentation']);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [addingHobby, setAddingHobby] = useState(false);
+  const [hobbyInput, setHobbyInput] = useState('');
+  const [blindMode, setBlindMode] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const langDropdownRef = useRef(null);
   const [studyMode, setStudyMode] = useState('no');
   const [experienceWorked, setExperienceWorked] = useState(true);
   const [experience, setExperience] = useState({
@@ -118,12 +116,40 @@ function App() {
     setAccessibility((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('a11y-font-large', Boolean(accessibility.fontSize));
+    root.classList.toggle('a11y-screen-reading', Boolean(accessibility.screenReading));
+    root.classList.toggle('a11y-high-contrast', Boolean(accessibility.colorContrast));
+    root.classList.toggle('a11y-magnification', Boolean(accessibility.magnification));
+    root.classList.toggle('a11y-audio-guidance', Boolean(accessibility.audioGuidance));
+    root.classList.toggle('a11y-keyboard-focus', Boolean(accessibility.keyboard));
+    root.classList.toggle('a11y-blind-mode', Boolean(blindMode));
+  }, [accessibility, blindMode]);
+
+  useEffect(() => {
+    if (!langMenuOpen) return undefined;
+    const handleOutside = (e) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
+        setLangMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [langMenuOpen]);
+
   const updateField = (event) => {
     const { name, value } = event.target;
     setAccount((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAutoFill = () => {
+    setPersonal((prev) => ({
+      ...prev,
+      firstName: 'Selam',
+      middleName: 'Tadesse',
+      lastName: 'Bekele',
+    }));
     setAccount({
       email: 'selam.bekele@institution.org',
       phone: '+251 911 000 000',
@@ -152,10 +178,32 @@ function App() {
 
   const previousStep = () => changeStep(-1);
 
-  const toggleTag = (tag) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
-    );
+  const addHobby = () => {
+    const trimmed = hobbyInput.trim();
+    if (!trimmed) {
+      setAddingHobby(false);
+      return;
+    }
+    setSelectedTags((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setHobbyInput('');
+    setAddingHobby(false);
+  };
+
+  const removeHobby = (tag) => {
+    setSelectedTags((prev) => prev.filter((item) => item !== tag));
+  };
+
+  const toggleBlindMode = () => {
+    setBlindMode((prev) => {
+      const next = !prev;
+      setAccessibility((a11y) => ({
+        ...a11y,
+        screenReading: next ? true : a11y.screenReading,
+        audioGuidance: next ? true : a11y.audioGuidance,
+        keyboard: next ? true : a11y.keyboard,
+      }));
+      return next;
+    });
   };
 
   const handleFileUpload = (event, key) => {
@@ -243,94 +291,226 @@ function App() {
 
       case 1:
         return (
-          <section className="step-shell accessibility-step">
-            <div className="top-progress"><span style={{ width: '25%' }} /></div>
+          <section className="step-shell account-step">
+            <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
             <header className="top-bar">
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">02 / 09</span>
+                <span className="step-indicator">02 / 07</span>
               </div>
             </header>
 
             <main className="content-wrap center-stage">
-              <div className="card card-centered accessibility-card">
-                <div className="section-head text-center">
-                  <h1>Accessibility Mode</h1>
-                  <p>Choose assistance options to optimize your experience throughout the system (all optional).</p>
+              <div className="card card-centered account-card personal-scroll-box">
+
+                <div className="section-head with-action">
+                  <h1>Account & Personal Information</h1>
+                  <p>Enter your personal details and credentials in order to set up your profile.</p>
+                  <button type="button" className="inline-pill" onClick={() => setModalOpen(true)}>
+                    <span className="material-symbols-outlined">document_scanner</span>
+                    Scan ID
+                  </button>
                 </div>
 
-                <div className="accessibility-grid">
-                  {ACCESSIBILITY_OPTIONS.map((option) => (
-                    <div key={option.key} className="access-card">
-                      <div className="access-top">
-                        <div className="icon-wrap"><span className="material-symbols-outlined">{option.icon}</span></div>
+                <form className="form-stack" onSubmit={(e) => e.preventDefault()}>
+                  {/* 1. Full Name */}
+                  <div className="three-col">
+                    <div className="field-group">
+                      <label>First Name <span>*</span></label>
+                      <input value={personal.firstName} onChange={(e) => setPersonal({ ...personal, firstName: e.target.value })} placeholder="First name" />
+                    </div>
+                    <div className="field-group">
+                      <label>Middle Name</label>
+                      <input value={personal.middleName} onChange={(e) => setPersonal({ ...personal, middleName: e.target.value })} placeholder="Middle name" />
+                    </div>
+                    <div className="field-group">
+                      <label>Last Name <span>*</span></label>
+                      <input value={personal.lastName} onChange={(e) => setPersonal({ ...personal, lastName: e.target.value })} placeholder="Last name" />
+                    </div>
+                  </div>
+
+                  {/* 2. Contact & National ID */}
+                  <div className="three-col">
+                    <div className="field-group">
+                      <label>Official Email Address <span>*</span></label>
+                      <div className="input-with-icon">
+                        <span className="material-symbols-outlined">mail</span>
+                        <input name="email" type="email" value={account.email} onChange={updateField} placeholder="name@organization.org" />
+                      </div>
+                    </div>
+
+                    <div className="field-group">
+                      <label>Phone Number <span>*</span></label>
+                      <div className="input-with-icon">
+                        <span className="material-symbols-outlined">call</span>
+                        <input name="phone" type="tel" value={account.phone} onChange={updateField} placeholder="+251 911 000 000" />
+                      </div>
+                    </div>
+
+                    <div className="field-group">
+                      <label>National ID Number <span>*</span></label>
+                      <div className="input-with-icon">
+                        <span className="material-symbols-outlined">badge</span>
+                        <input name="nationalId" type="text" value={account.nationalId} onChange={updateField} placeholder="e.g. ID-9482-TX-291" className="mono-input" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Account Security */}
+                  <div className="two-col">
+                    <div className="field-group">
+                      <label>Password <span>*</span></label>
+                      <div className="input-with-icon">
+                        <span className="material-symbols-outlined">lock</span>
+                        <input name="password" type="password" value={account.password} onChange={updateField} placeholder="••••••••••••" />
+                      </div>
+                    </div>
+                    <div className="field-group">
+                      <label>Confirm Password <span>*</span></label>
+                      <div className="input-with-icon">
+                        <span className="material-symbols-outlined">check_circle</span>
+                        <input name="confirmPassword" type="password" value={account.confirmPassword} onChange={updateField} placeholder="••••••••••••" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Family & Emergency Contact */}
+                  <div className="three-col">
+                    <div className="field-group">
+                      <label>Family Status</label>
+                      <select value={personal.familyStatus} onChange={(e) => setPersonal({ ...personal, familyStatus: e.target.value })}>
+                        <option value="">Select status</option>
+                        <option value="single">Single</option>
+                        <option value="married">Married</option>
+                        <option value="relationship">In a relationship</option>
+                        <option value="prefer-not">Prefer not to say</option>
+                      </select>
+                    </div>
+                    <div className="field-group">
+                      <label>Emergency Contact Name</label>
+                      <input value={personal.emergencyName} onChange={(e) => setPersonal({ ...personal, emergencyName: e.target.value })} placeholder="Full name" />
+                    </div>
+                    <div className="field-group">
+                      <label>Emergency Contact Phone</label>
+                      <input value={personal.emergencyPhone} onChange={(e) => setPersonal({ ...personal, emergencyPhone: e.target.value })} placeholder="(555) 019-2834" />
+                    </div>
+                  </div>
+
+                  {/* 5. Relationship & Lifestyle Preferences */}
+                  <div className="three-col">
+                    <div className="field-group">
+                      <label>Relationship to Contact</label>
+                      <select value={personal.contactRelationship} onChange={(e) => setPersonal({ ...personal, contactRelationship: e.target.value })}>
+                        <option value="">Select relationship</option>
+                        <option value="parent">Parent</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="sibling">Sibling</option>
+                        <option value="partner">Partner</option>
+                        <option value="friend">Friend</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div className="field-group">
+                      <label>Primary Interest</label>
+                      <select value={personal.primaryInterest} onChange={(e) => setPersonal({ ...personal, primaryInterest: e.target.value })}>
+                        <option value="">Choose focus area</option>
+                        <option value="tech">Technology & Design</option>
+                        <option value="arts">Arts & Culture</option>
+                        <option value="outdoors">Athletics & Outdoors</option>
+                        <option value="literature">Literature & Science</option>
+                      </select>
+                    </div>
+                    <div className="field-group">
+                      <label>Preferred Leisure / Activity</label>
+                      <input value={personal.leisureActivity} onChange={(e) => setPersonal({ ...personal, leisureActivity: e.target.value })} placeholder="e.g. Trail running, Ceramics" />
+                    </div>
+                  </div>
+
+                  <div className="notice-panel">
+                    <span className="material-symbols-outlined">verified_user</span>
+                    <p>Inputs are cryptographically secured under sovereign data isolation standards. You may verify identity via scanner at any point.</p>
+                  </div>
+
+                  {/* 6. Hobbies */}
+                  <div className="tag-wrap">
+                    <label>Hobbies &amp; Personal Interests</label>
+                    <div className="chip-row">
+                      {selectedTags.map((tag) => (
+                        <span key={tag} className="chip chip-active">
+                          <span>{tag}</span>
+                          <button
+                            type="button"
+                            className="chip-remove-btn"
+                            aria-label={`Remove ${tag}`}
+                            onClick={() => removeHobby(tag)}
+                          >
+                            <span className="material-symbols-outlined">close</span>
+                          </button>
+                        </span>
+                      ))}
+
+                      {addingHobby ? (
+                        <div className="hobby-inline-editor">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={hobbyInput}
+                            onChange={(e) => setHobbyInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addHobby();
+                              } else if (e.key === 'Escape') {
+                                setHobbyInput('');
+                                setAddingHobby(false);
+                              }
+                            }}
+                            placeholder="Type a hobby..."
+                          />
+                          <button
+                            type="button"
+                            className="hobby-confirm-btn"
+                            aria-label="Confirm hobby"
+                            onClick={addHobby}
+                          >
+                            <span className="material-symbols-outlined">check</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="hobby-cancel-btn"
+                            aria-label="Cancel adding hobby"
+                            onClick={() => {
+                              setHobbyInput('');
+                              setAddingHobby(false);
+                            }}
+                          >
+                            <span className="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
-                          aria-checked={accessibility[option.key]}
-                          className={`switch ${accessibility[option.key] ? 'on' : ''}`}
-                          onClick={() => toggleAccess(option.key)}
+                          className="hobby-add-plus-btn"
+                          aria-label="Add hobby"
+                          title="Add a hobby"
+                          onClick={() => setAddingHobby(true)}
                         >
-                          <span className="switch-thumb" />
+                          <span className="material-symbols-outlined">add</span>
                         </button>
-                      </div>
-
-                      <div className="access-copy">
-                        <h3>{option.title}</h3>
-                        <p>{option.detail}</p>
-                      </div>
-
-                      {option.key === 'fontSize' && (
-                        <div className="option-scale">
-                          <span>A</span>
-                          <div className="scale-bar">
-                            <span className="fill" />
-                            <span className="fill" />
-                            <span />
-                            <span />
-                          </div>
-                          <span className="scale-plus">A+</span>
-                        </div>
-                      )}
-
-                      {option.key === 'screenReading' && (
-                        <div className="option-linear">
-                          <span>Synthesizer Rate</span>
-                          <strong>1.0x (Default)</strong>
-                        </div>
-                      )}
-
-                      {option.key === 'colorContrast' && (
-                        <div className="segmented">
-                          <span className="active">Standard</span>
-                          <span>AAA High</span>
-                          <span>Mono</span>
-                        </div>
-                      )}
-
-                      {option.key === 'magnification' && (
-                        <div className="option-linear">
-                          <span>Hit Target Radius</span>
-                          <strong>+8px Expansion</strong>
-                        </div>
-                      )}
-
-                      {option.key === 'audioGuidance' && (
-                        <div className="option-linear check-row">
-                          <span className="material-symbols-outlined">check_circle</span>
-                          <span>Auto-describe fields</span>
-                        </div>
-                      )}
-
-                      {option.key === 'keyboard' && (
-                        <div className="option-linear">
-                          <span>Focus Halo</span>
-                          <strong>High Visibility</strong>
-                        </div>
                       )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+
+                  {/* 7. Short Biography */}
+                  <div className="field-group">
+                    <div className="field-header">
+                      <label>Short Personal Biography</label>
+                      <span className="muted-tag">{personal.bio.length} / 280</span>
+                    </div>
+                    <textarea rows="3" maxLength="280" value={personal.bio} onChange={(e) => setPersonal({ ...personal, bio: e.target.value })} placeholder="Write a brief summary about yourself and what you enjoy..." />
+                  </div>
+                </form>
               </div>
             </main>
 
@@ -349,107 +529,13 @@ function App() {
 
       case 2:
         return (
-          <section className="step-shell account-step">
-            <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
-            <header className="top-bar">
-              <div className="brand">KELAL</div>
-              <div className="header-meta">
-                <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">03 / 09</span>
-              </div>
-            </header>
-
-            <main className="content-wrap center-stage">
-              <div className="card card-centered account-card">
-                <div className="section-head with-action">
-                  <h1>Basic Account Information</h1>
-                  <p>Enter your institutional credentials and national identity number to continue.</p>
-                  <button type="button" className="inline-pill" onClick={() => setModalOpen(true)}>
-                    <span className="material-symbols-outlined">document_scanner</span>
-                    Scan ID
-                  </button>
-                </div>
-
-                <form className="form-stack" onSubmit={(e) => e.preventDefault()}>
-                  <div className="field-group">
-                    <label>Official Email Address <span>*</span></label>
-                    <div className="input-with-icon">
-                      <span className="material-symbols-outlined">mail</span>
-                      <input name="email" type="email" value={account.email} onChange={updateField} placeholder="name@organization.org" />
-                    </div>
-                  </div>
-
-                  <div className="field-group">
-                    <label>Phone Number <span>*</span></label>
-                    <div className="input-with-icon">
-                      <span className="material-symbols-outlined">call</span>
-                      <input name="phone" type="tel" value={account.phone} onChange={updateField} placeholder="+1 (555) 000-0000" />
-                    </div>
-                  </div>
-
-                  <div className="two-col">
-                    <div className="field-group">
-                      <label>Password <span>*</span></label>
-                      <div className="input-with-icon">
-                        <span className="material-symbols-outlined">lock</span>
-                        <input name="password" type="password" value={account.password} onChange={updateField} placeholder="••••••••••••" />
-                      </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label>Confirm Password <span>*</span></label>
-                      <div className="input-with-icon">
-                        <span className="material-symbols-outlined">check_circle</span>
-                        <input name="confirmPassword" type="password" value={account.confirmPassword} onChange={updateField} placeholder="••••••••••••" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="field-group">
-                    <div className="field-header">
-                      <label>National ID Number <span>*</span></label>
-                      <button type="button" className="mini-link" onClick={() => setModalOpen(true)}>
-                        <span className="material-symbols-outlined">document_scanner</span>
-                        Autofill with ID
-                      </button>
-                    </div>
-                    <div className="input-with-icon">
-                      <span className="material-symbols-outlined">badge</span>
-                      <input name="nationalId" type="text" value={account.nationalId} onChange={updateField} placeholder="e.g. ID-9482-TX-291" className="mono-input" />
-                    </div>
-                  </div>
-
-                  <div className="notice-panel">
-                    <span className="material-symbols-outlined">verified_user</span>
-                    <p>Inputs are cryptographically secured under sovereign data isolation standards. You may verify identity via scanner at any point.</p>
-                  </div>
-                </form>
-              </div>
-            </main>
-
-            <footer className="bottom-nav">
-              <button type="button" className="nav-btn ghost" onClick={previousStep}>
-                <span className="material-symbols-outlined">arrow_back</span>
-                <span>Back</span>
-              </button>
-              <button type="button" className="nav-btn primary" onClick={nextStep}>
-                <span>Next</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </footer>
-
-          </section>
-        );
-
-      case 3:
-        return (
           <section className="step-shell support-step">
             <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
             <header className="top-bar">
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">04 / 09</span>
+                <span className="step-indicator">03 / 07</span>
               </div>
             </header>
 
@@ -477,6 +563,32 @@ function App() {
                       </div>
                       <h3>{option.title}</h3>
                       <p>{option.text}</p>
+
+                      {option.key === 'disability' && (
+                        <div
+                          className="field-group disability-select-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <label htmlFor="disability-type-select">Disability Category</label>
+                          <select
+                            id="disability-type-select"
+                            value={disabilityType}
+                            onChange={(e) => {
+                              setSelectedStatus('disability');
+                              setDisabilityType(e.target.value);
+                            }}
+                          >
+                            <option value="">Select disability type...</option>
+                            <option value="visual">Visual Impairment / Blindness</option>
+                            <option value="hearing">Hearing Impairment / Deafness</option>
+                            <option value="mobility">Physical / Mobility Disability</option>
+                            <option value="speech">Speech & Communication</option>
+                            <option value="cognitive">Cognitive / Learning / Neurodivergent</option>
+                            <option value="chronic">Chronic Health Condition</option>
+                            <option value="multiple">Multiple / Other</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -509,135 +621,7 @@ function App() {
           </section>
         );
 
-      case 4:
-        return (
-          <section className="step-shell personal-step">
-            <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
-            <header className="top-bar">
-              <div className="brand">KELAL</div>
-              <div className="header-meta">
-                <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">05 / 09</span>
-              </div>
-            </header>
-
-            <main className="content-wrap center-stage">
-              <div className="card card-centered personal-card">
-                <div className="section-head text-center mb-8">
-                  <h1>Personal Information</h1>
-                </div>
-
-                <form className="form-stack" onSubmit={(e) => e.preventDefault()}>
-                  <div className="three-col">
-                    <div className="field-group">
-                      <label>First Name</label>
-                      <input value={personal.firstName} onChange={(e) => setPersonal({ ...personal, firstName: e.target.value })} placeholder="First name" />
-                    </div>
-                    <div className="field-group">
-                      <label>Middle Name</label>
-                      <input value={personal.middleName} onChange={(e) => setPersonal({ ...personal, middleName: e.target.value })} placeholder="Middle name" />
-                    </div>
-                    <div className="field-group">
-                      <label>Last Name</label>
-                      <input value={personal.lastName} onChange={(e) => setPersonal({ ...personal, lastName: e.target.value })} placeholder="Last name" />
-                    </div>
-                  </div>
-
-                  <div className="three-col">
-                    <div className="field-group">
-                      <label>Family Status</label>
-                      <select value={personal.familyStatus} onChange={(e) => setPersonal({ ...personal, familyStatus: e.target.value })}>
-                        <option value="">Select status</option>
-                        <option value="single">Single</option>
-                        <option value="married">Married</option>
-                        <option value="relationship">In a relationship</option>
-                        <option value="prefer-not">Prefer not to say</option>
-                      </select>
-                    </div>
-                    <div className="field-group">
-                      <label>Emergency Contact Name</label>
-                      <input value={personal.emergencyName} onChange={(e) => setPersonal({ ...personal, emergencyName: e.target.value })} placeholder="Full name" />
-                    </div>
-                    <div className="field-group">
-                      <label>Emergency Contact Phone</label>
-                      <input value={personal.emergencyPhone} onChange={(e) => setPersonal({ ...personal, emergencyPhone: e.target.value })} placeholder="(555) 019-2834" />
-                    </div>
-                  </div>
-
-                  <div className="three-col">
-                    <div className="field-group">
-                      <label>Relationship to Contact</label>
-                      <select value={personal.contactRelationship} onChange={(e) => setPersonal({ ...personal, contactRelationship: e.target.value })}>
-                        <option value="">Select relationship</option>
-                        <option value="parent">Parent</option>
-                        <option value="spouse">Spouse</option>
-                        <option value="sibling">Sibling</option>
-                        <option value="partner">Partner</option>
-                        <option value="friend">Friend</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div className="field-group">
-                      <label>Primary Interest</label>
-                      <select value={personal.primaryInterest} onChange={(e) => setPersonal({ ...personal, primaryInterest: e.target.value })}>
-                        <option value="">Choose focus area</option>
-                        <option value="tech">Technology & Design</option>
-                        <option value="arts">Arts & Culture</option>
-                        <option value="outdoors">Athletics & Outdoors</option>
-                        <option value="literature">Literature & Science</option>
-                      </select>
-                    </div>
-                    <div className="field-group">
-                      <label>Preferred Leisure / Activity</label>
-                      <input value={personal.leisureActivity} onChange={(e) => setPersonal({ ...personal, leisureActivity: e.target.value })} placeholder="e.g. Trail running, Ceramics" />
-                    </div>
-                  </div>
-
-                  <div className="tag-wrap">
-                    <label>Hobbies & Personal Interests</label>
-                    <div className="chip-row">
-                      {INTEREST_TAGS.map((tag) => {
-                        const active = selectedTags.includes(tag);
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            className={`chip ${active ? 'chip-active' : ''}`}
-                            onClick={() => toggleTag(tag)}
-                          >
-                            <span>{tag}</span>
-                            <span className="material-symbols-outlined">{active ? 'check' : 'add'}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="field-group">
-                    <div className="field-header">
-                      <label>Short Personal Biography</label>
-                      <span className="muted-tag">{personal.bio.length} / 280</span>
-                    </div>
-                    <textarea rows="3" maxLength="280" value={personal.bio} onChange={(e) => setPersonal({ ...personal, bio: e.target.value })} placeholder="Write a brief summary about yourself and what you enjoy..." />
-                  </div>
-                </form>
-              </div>
-            </main>
-
-            <footer className="bottom-nav">
-              <button type="button" className="nav-btn ghost" onClick={previousStep}>
-                <span className="material-symbols-outlined">arrow_back</span>
-                <span>Back</span>
-              </button>
-              <button type="button" className="nav-btn primary" onClick={nextStep}>
-                <span>Next</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </footer>
-          </section>
-        );
-
-      case 5:
+      case 3:
         return (
           <section className="step-shell education-step">
             <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
@@ -645,7 +629,7 @@ function App() {
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">06 / 09</span>
+                <span className="step-indicator">05 / 08</span>
               </div>
             </header>
 
@@ -752,7 +736,7 @@ function App() {
           </section>
         );
 
-      case 6:
+      case 4:
         return (
           <section className="step-shell work-step">
             <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
@@ -760,7 +744,7 @@ function App() {
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">07 / 09</span>
+                <span className="step-indicator">07 / 08</span>
               </div>
             </header>
 
@@ -849,7 +833,7 @@ function App() {
           </section>
         );
 
-      case 7:
+      case 5:
         return (
           <section className="step-shell docs-step">
             <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
@@ -857,14 +841,14 @@ function App() {
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">08 / 09</span>
+                <span className="step-indicator">07 / 08</span>
               </div>
             </header>
 
             <main className="content-wrap center-stage">
               <div className="card card-centered docs-card">
                 <div className="section-head text-center max-width">
-                  <h1>Documents & Portfolio</h1>
+                  <h1>Documents &amp; Portfolio</h1>
                   <p>Upload your credentials and share your professional links to complete onboarding.</p>
                 </div>
 
@@ -885,7 +869,7 @@ function App() {
                   <label className="upload-box">
                     <input type="file" accept=".pdf,.png,.jpg" onChange={(e) => handleFileUpload(e, 'cert')} />
                     <div className="upload-icon"><span className="material-symbols-outlined">badge</span></div>
-                    <strong>Certificates & Accreditations</strong>
+                    <strong>Certificates &amp; Accreditations</strong>
                     <p>Upload verified licenses, or <span>browse</span></p>
                     <div className="file-types">
                       <span>PDF</span>
@@ -922,14 +906,14 @@ function App() {
                 <span>Back</span>
               </button>
               <button type="button" className="nav-btn primary" onClick={nextStep}>
-                <span>Complete & Finish</span>
+                <span>Complete &amp; Finish</span>
                 <span className="material-symbols-outlined">check</span>
               </button>
             </footer>
           </section>
         );
 
-      case 8:
+      case 6:
         return (
           <section className="step-shell complete-step">
             <div className="top-progress"><span style={{ width: `${progress}%` }} /></div>
@@ -937,7 +921,7 @@ function App() {
               <div className="brand">KELAL</div>
               <div className="header-meta">
                 <div className="mini-progress"><span style={{ width: `${progress}%` }} /></div>
-                <span className="step-indicator">09 / 09</span>
+                <span className="step-indicator">08 / 08</span>
               </div>
             </header>
 
@@ -1056,6 +1040,74 @@ function App() {
       <header className="top-bar">
         <div className="brand">KELAL</div>
         <div className="header-meta">
+          <button
+            type="button"
+            className={`blind-mode-toggle ${blindMode ? 'is-on' : ''}`}
+            aria-pressed={blindMode}
+            aria-label="Toggle Blind Mode"
+            title="Blind Mode (Screen Reader & Audio Guidance)"
+            onClick={toggleBlindMode}
+          >
+            <span className="material-symbols-outlined">
+              {blindMode ? 'visibility_off' : 'blind'}
+            </span>
+            <span className="blind-mode-label">Blind Mode</span>
+            <span className="blind-mode-pill" aria-hidden="true">
+              <span className="blind-mode-thumb" />
+            </span>
+          </button>
+
+          {currentStep > 0 && (
+            <div className="mini-lang-dropdown" ref={langDropdownRef}>
+              <button
+                type="button"
+                className={`mini-lang-trigger ${langMenuOpen ? 'open' : ''}`}
+                aria-haspopup="listbox"
+                aria-expanded={langMenuOpen}
+                aria-label="Select Language"
+                onClick={() => setLangMenuOpen((prev) => !prev)}
+              >
+                <span className="material-symbols-outlined">language</span>
+                <span className="mini-lang-code">{selectedLanguageLabel?.tag || 'ET-AM'}</span>
+                <span className="mini-lang-name">{selectedLanguageLabel?.label}</span>
+                <span className="material-symbols-outlined mini-lang-chevron">
+                  {langMenuOpen ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+
+              {langMenuOpen && (
+                <ul className="mini-lang-menu" role="listbox" aria-label="Available languages">
+                  {LANGUAGES.map((lang) => {
+                    const isSelected = lang.code === selectedLanguage;
+                    return (
+                      <li key={lang.code} role="option" aria-selected={isSelected}>
+                        <button
+                          type="button"
+                          className={`mini-lang-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedLanguage(lang.code);
+                            setLangMenuOpen(false);
+                          }}
+                        >
+                          <span className="mini-lang-item-left">
+                            <span className="mini-lang-native">{lang.label}</span>
+                            <span className="mini-lang-en">{lang.english}</span>
+                          </span>
+                          <span className="mini-lang-item-right">
+                            <span className="mini-lang-tag">{lang.tag}</span>
+                            {isSelected && (
+                              <span className="material-symbols-outlined">check</span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div
             className="mini-progress"
             role="progressbar"
@@ -1160,6 +1212,11 @@ function App() {
           <span>ID verified! Credentials autofilled successfully.</span>
         </div>
       )}
+      <AccessibilityWidget
+        options={ACCESSIBILITY_OPTIONS}
+        accessibility={accessibility}
+        toggleAccess={toggleAccess}
+      />
     </div>
   );
 }
